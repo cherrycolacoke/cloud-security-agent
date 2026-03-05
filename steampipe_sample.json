@@ -1,0 +1,192 @@
+{
+  "instances": [
+    {
+      "instance_id":          "i-0abc123def456",
+      "account_id":           "123456789012",
+      "region":               "us-west-2",
+      "resource_arn":         "arn:aws:ec2:us-west-2:123456789012:instance/i-0abc123def456",
+      "instance_state":       "running",
+      "instance_type":        "t3.medium",
+      "launch_time":          "2025-01-15T08:00:00Z",
+      "vpc_id":               "vpc-0abc111",
+      "subnet_id":            "subnet-0abc222",
+      "private_ip":           "10.0.1.50",
+      "public_ip":            "54.12.34.56",
+      "public_dns":           "ec2-54-12-34-56.us-west-2.compute.amazonaws.com",
+      "iam_instance_profile": "arn:aws:iam::123456789012:instance-profile/WebServerRole",
+      "key_name":             "my-keypair",
+      "name_tag":             "web-server-prod",
+      "tags":                 {"Name": "web-server-prod", "Env": "production"},
+      "raw_json":             {"source": "sample"}
+    },
+    {
+      "instance_id":          "i-0def456abc789",
+      "account_id":           "123456789012",
+      "region":               "us-east-1",
+      "resource_arn":         "arn:aws:ec2:us-east-1:123456789012:instance/i-0def456abc789",
+      "instance_state":       "running",
+      "instance_type":        "t3.small",
+      "launch_time":          "2025-02-01T12:00:00Z",
+      "vpc_id":               "vpc-0abc111",
+      "subnet_id":            "subnet-0abc333",
+      "private_ip":           "10.0.2.10",
+      "public_ip":            null,
+      "public_dns":           null,
+      "iam_instance_profile": null,
+      "key_name":             "my-keypair",
+      "name_tag":             "db-server-prod",
+      "tags":                 {"Name": "db-server-prod", "Env": "production"},
+      "raw_json":             {"source": "sample"}
+    },
+    {
+      "instance_id":          "i-0ghi789jkl012",
+      "account_id":           "123456789012",
+      "region":               "us-east-1",
+      "resource_arn":         "arn:aws:ec2:us-east-1:123456789012:instance/i-0ghi789jkl012",
+      "instance_state":       "stopped",
+      "instance_type":        "t2.micro",
+      "launch_time":          "2024-11-01T09:00:00Z",
+      "vpc_id":               "vpc-0abc111",
+      "subnet_id":            "subnet-0abc222",
+      "private_ip":           "10.0.1.75",
+      "public_ip":            null,
+      "public_dns":           null,
+      "iam_instance_profile": null,
+      "key_name":             "my-keypair",
+      "name_tag":             "dev-instance",
+      "tags":                 {"Name": "dev-instance", "Env": "dev"},
+      "raw_json":             {"source": "sample"}
+    }
+  ],
+
+  "s3": [
+    {
+      "bucket_name":          "my-public-bucket",
+      "account_id":           "123456789012",
+      "region":               "us-east-1",
+      "resource_arn":         "arn:aws:s3:::my-public-bucket",
+      "public_access_blocked": false,
+      "versioning_enabled":   false,
+      "logging_enabled":      false,
+      "encryption_enabled":   false,
+      "creation_date":        "2024-06-01T00:00:00Z",
+      "tags":                 {"Env": "production"},
+      "raw_json":             {"source": "sample"}
+    },
+    {
+      "bucket_name":          "my-encrypted-bucket",
+      "account_id":           "123456789012",
+      "region":               "us-east-1",
+      "resource_arn":         "arn:aws:s3:::my-encrypted-bucket",
+      "public_access_blocked": true,
+      "versioning_enabled":   true,
+      "logging_enabled":      true,
+      "encryption_enabled":   true,
+      "creation_date":        "2024-01-15T00:00:00Z",
+      "tags":                 {"Env": "production"},
+      "raw_json":             {"source": "sample"}
+    },
+    {
+      "bucket_name":          "dev-scratch-bucket",
+      "account_id":           "123456789012",
+      "region":               "us-west-2",
+      "resource_arn":         "arn:aws:s3:::dev-scratch-bucket",
+      "public_access_blocked": false,
+      "versioning_enabled":   false,
+      "logging_enabled":      false,
+      "encryption_enabled":   false,
+      "creation_date":        "2024-09-10T00:00:00Z",
+      "tags":                 {"Env": "dev"},
+      "raw_json":             {"source": "sample"}
+    }
+  ],
+
+  "iam": [
+    {
+      "user_name":            "admin-user",
+      "account_id":           "123456789012",
+      "user_id":              "AIDAEXAMPLE001",
+      "resource_arn":         "arn:aws:iam::123456789012:user/admin-user",
+      "mfa_enabled":          false,
+      "has_console_access":   true,
+      "has_access_keys":      true,
+      "password_last_used":   "2025-02-28T10:00:00Z",
+      "access_key_last_used": "2025-03-01T08:00:00Z",
+      "create_date":          "2023-01-01T00:00:00Z",
+      "tags":                 {},
+      "raw_json":             {"source": "sample"}
+    },
+    {
+      "user_name":            "developer-jane",
+      "account_id":           "123456789012",
+      "user_id":              "AIDAEXAMPLE002",
+      "resource_arn":         "arn:aws:iam::123456789012:user/developer-jane",
+      "mfa_enabled":          true,
+      "has_console_access":   true,
+      "has_access_keys":      true,
+      "password_last_used":   "2025-03-01T09:00:00Z",
+      "access_key_last_used": "2025-03-01T07:00:00Z",
+      "create_date":          "2023-06-01T00:00:00Z",
+      "tags":                 {"Team": "engineering"},
+      "raw_json":             {"source": "sample"}
+    },
+    {
+      "user_name":            "ci-deploy-bot",
+      "account_id":           "123456789012",
+      "user_id":              "AIDAEXAMPLE003",
+      "resource_arn":         "arn:aws:iam::123456789012:user/ci-deploy-bot",
+      "mfa_enabled":          false,
+      "has_console_access":   false,
+      "has_access_keys":      true,
+      "password_last_used":   null,
+      "access_key_last_used": "2025-03-01T06:00:00Z",
+      "create_date":          "2023-03-15T00:00:00Z",
+      "tags":                 {"Team": "devops"},
+      "raw_json":             {"source": "sample"}
+    }
+  ],
+
+  "security_groups": [
+    {
+      "group_id":            "sg-0abc123",
+      "group_name":          "web-server-sg",
+      "account_id":          "123456789012",
+      "region":              "us-east-1",
+      "resource_arn":        "arn:aws:ec2:us-east-1:123456789012:security-group/sg-0abc123",
+      "vpc_id":              "vpc-0abc111",
+      "description":         "Web server security group",
+      "allows_all_ingress":  false,
+      "allows_ssh_public":   true,
+      "allows_rdp_public":   false,
+      "tags":                {"Name": "web-server-sg"},
+      "raw_json":            {"source": "sample"}
+    },
+    {
+      "group_id":            "sg-0def456",
+      "group_name":          "db-server-sg",
+      "account_id":          "123456789012",
+      "region":              "us-east-1",
+      "resource_arn":        "arn:aws:ec2:us-east-1:123456789012:security-group/sg-0def456",
+      "vpc_id":              "vpc-0abc111",
+      "description":         "Database server security group",
+      "allows_all_ingress":  false,
+      "allows_ssh_public":   false,
+      "allows_rdp_public":   false,
+      "tags":                {"Name": "db-server-sg"},
+      "raw_json":            {"source": "sample"}
+    }
+  ],
+
+  "vpcs": [
+    {
+      "vpc_id":      "vpc-0abc111",
+      "account_id":  "123456789012",
+      "region":      "us-east-1",
+      "cidr_block":  "10.0.0.0/16",
+      "is_default":  false,
+      "state":       "available",
+      "tags":        {"Name": "prod-vpc"},
+      "raw_json":    {"source": "sample"}
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+{
+  "SchemaVersion": 2,
+  "ArtifactName": "/",
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "/ (ubuntu 22.04)",
+      "Class": "os-pkgs",
+      "Type": "ubuntu",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2025-1234",
+          "PkgName": "nginx",
+          "InstalledVersion": "1.18.0",
+          "FixedVersion": "1.18.1",
+          "Severity": "CRITICAL",
+          "Title": "nginx: Remote Code Execution via crafted HTTP request",
+          "Description": "A buffer overflow vulnerability in nginx 1.18.0 allows a remote attacker to execute arbitrary code via a specially crafted HTTP request to the server.",
+          "PrimaryURL": "https://nvd.nist.gov/vuln/detail/CVE-2025-1234",
+          "CVSS": {
+            "nvd": {
+              "V3Score": 9.8,
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+            }
+          }
+        },
+        {
+          "VulnerabilityID": "CVE-2024-5678",
+          "PkgName": "openssl",
+          "InstalledVersion": "3.0.2",
+          "FixedVersion": "3.0.9",
+          "Severity": "HIGH",
+          "Title": "openssl: Memory corruption in X.509 certificate verification",
+          "Description": "A memory corruption vulnerability in OpenSSL 3.0.2 X.509 certificate verification could allow a remote attacker to cause a denial of service or potentially execute arbitrary code.",
+          "PrimaryURL": "https://nvd.nist.gov/vuln/detail/CVE-2024-5678",
+          "CVSS": {
+            "nvd": {
+              "V3Score": 8.1,
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:H/A:H"
+            }
+          }
+        },
+        {
+          "VulnerabilityID": "CVE-2024-9999",
+          "PkgName": "curl",
+          "InstalledVersion": "7.81.0",
+          "FixedVersion": "7.88.0",
+          "Severity": "HIGH",
+          "Title": "curl: HSTS bypass via IDN",
+          "Description": "curl before 7.88.0 allows HSTS bypass via an IDN host name. An attacker can use an internationalized domain name to redirect traffic.",
+          "PrimaryURL": "https://nvd.nist.gov/vuln/detail/CVE-2024-9999",
+          "CVSS": {
+            "nvd": {
+              "V3Score": 7.5,
+              "V3Vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N"
+            }
+          }
+        },
+        {
+          "VulnerabilityID": "CVE-2024-3333",
+          "PkgName": "libssl3",
+          "InstalledVersion": "3.0.2",
+          "FixedVersion": "3.0.7",
+          "Severity": "MEDIUM",
+          "Title": "openssl: Timing side-channel in RSA decryption",
+          "Description": "A timing side-channel vulnerability in RSA decryption in OpenSSL allows a local attacker to recover private key material.",
+          "PrimaryURL": "https://nvd.nist.gov/vuln/detail/CVE-2024-3333",
+          "CVSS": {
+            "nvd": {
+              "V3Score": 5.9,
+              "V3Vector": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:H/I:N/A:N"
+            }
+          }
+        },
+        {
+          "VulnerabilityID": "CVE-2023-7777",
+          "PkgName": "bash",
+          "InstalledVersion": "5.1.16",
+          "FixedVersion": "",
+          "Severity": "LOW",
+          "Title": "bash: Minor information disclosure in error messages",
+          "Description": "bash 5.1.16 discloses minor path information in error messages that could aid an attacker in reconnaissance.",
+          "PrimaryURL": "https://nvd.nist.gov/vuln/detail/CVE-2023-7777",
+          "CVSS": {
+            "nvd": {
+              "V3Score": 3.3,
+              "V3Vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:N/A:N"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

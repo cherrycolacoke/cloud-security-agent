@@ -1,0 +1,125 @@
+[
+  {
+    "account_id": "123456789012",
+    "account_name": "dev-account",
+    "region": "us-east-1",
+    "resource_arn": "arn:aws:s3:::my-public-bucket",
+    "resource_type": "AWS::S3::Bucket",
+    "check_id": "s3_bucket_public_access",
+    "check_title": "S3 Bucket has public access enabled",
+    "service_name": "s3",
+    "severity": "CRITICAL",
+    "status": "FAIL",
+    "description": "S3 bucket my-public-bucket has public access enabled which may expose sensitive data.",
+    "risk": "Public S3 buckets can expose sensitive data to the internet.",
+    "remediation": {
+      "Recommendation": {
+        "Text": "Disable public access on the S3 bucket via Block Public Access settings.",
+        "Url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html"
+      },
+      "Code": {
+        "Terraform": "resource \"aws_s3_bucket_public_access_block\" \"example\" { bucket = aws_s3_bucket.example.id block_public_acls = true }"
+      }
+    }
+  },
+  {
+    "account_id": "123456789012",
+    "account_name": "dev-account",
+    "region": "us-east-1",
+    "resource_arn": "arn:aws:iam::123456789012:root",
+    "resource_type": "AWS::IAM::User",
+    "check_id": "iam_root_hardware_mfa_enabled",
+    "check_title": "Root account does not have hardware MFA enabled",
+    "service_name": "iam",
+    "severity": "CRITICAL",
+    "status": "FAIL",
+    "description": "The root account does not have a hardware MFA device enabled.",
+    "risk": "Root account without MFA is a critical security risk.",
+    "remediation": {
+      "Recommendation": {
+        "Text": "Enable hardware MFA for the root account.",
+        "Url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_enable_physical.html"
+      }
+    }
+  },
+  {
+    "account_id": "123456789012",
+    "account_name": "dev-account",
+    "region": "us-east-1",
+    "resource_arn": "arn:aws:ec2:us-east-1:123456789012:security-group/sg-0abc123",
+    "resource_type": "AWS::EC2::SecurityGroup",
+    "check_id": "ec2_securitygroup_allow_ingress_from_internet_to_port_22",
+    "check_title": "Security group allows SSH ingress from 0.0.0.0/0",
+    "service_name": "ec2",
+    "severity": "HIGH",
+    "status": "FAIL",
+    "description": "Security group sg-0abc123 allows unrestricted SSH access from the internet.",
+    "risk": "Unrestricted SSH access exposes instances to brute force attacks.",
+    "remediation": {
+      "Recommendation": {
+        "Text": "Restrict SSH access to known IP ranges only.",
+        "Url": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/security-group-rules.html"
+      }
+    }
+  },
+  {
+    "account_id": "123456789012",
+    "account_name": "dev-account",
+    "region": "us-west-2",
+    "resource_arn": "arn:aws:ec2:us-west-2:123456789012:instance/i-0abc123def456",
+    "resource_type": "AWS::EC2::Instance",
+    "check_id": "ec2_instance_imdsv2_enabled",
+    "check_title": "EC2 instance does not enforce IMDSv2",
+    "service_name": "ec2",
+    "severity": "MEDIUM",
+    "status": "FAIL",
+    "description": "EC2 instance i-0abc123def456 does not require IMDSv2, leaving it vulnerable to SSRF attacks.",
+    "risk": "Without IMDSv2, SSRF vulnerabilities can be used to steal instance credentials.",
+    "remediation": {
+      "Recommendation": {
+        "Text": "Enforce IMDSv2 on all EC2 instances.",
+        "Url": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html"
+      }
+    }
+  },
+  {
+    "account_id": "123456789012",
+    "account_name": "dev-account",
+    "region": "us-east-1",
+    "resource_arn": "arn:aws:cloudtrail:us-east-1:123456789012:trail/default",
+    "resource_type": "AWS::CloudTrail::Trail",
+    "check_id": "cloudtrail_multi_region_enabled",
+    "check_title": "CloudTrail is not enabled in all regions",
+    "service_name": "cloudtrail",
+    "severity": "HIGH",
+    "status": "FAIL",
+    "description": "CloudTrail trail is not configured to log all regions.",
+    "risk": "Without multi-region CloudTrail, API activity in some regions may go undetected.",
+    "remediation": {
+      "Recommendation": {
+        "Text": "Enable multi-region CloudTrail logging.",
+        "Url": "https://docs.aws.amazon.com/awscloudtrail/latest/userguide/receive-cloudtrail-log-files-from-multiple-regions.html"
+      }
+    }
+  },
+  {
+    "account_id": "123456789012",
+    "account_name": "dev-account",
+    "region": "us-east-1",
+    "resource_arn": "arn:aws:s3:::my-encrypted-bucket",
+    "resource_type": "AWS::S3::Bucket",
+    "check_id": "s3_bucket_public_access",
+    "check_title": "S3 Bucket has public access enabled",
+    "service_name": "s3",
+    "severity": "CRITICAL",
+    "status": "PASS",
+    "description": "S3 bucket my-encrypted-bucket has public access correctly blocked.",
+    "risk": "",
+    "remediation": {
+      "Recommendation": {
+        "Text": "No action needed.",
+        "Url": ""
+      }
+    }
+  }
+]
