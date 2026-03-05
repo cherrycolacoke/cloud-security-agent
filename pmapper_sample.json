@@ -1,0 +1,63 @@
+[
+  {
+    "title": "IAM Role can escalate to Admin via sts:AssumeRole",
+    "description": "WebServerRole can assume DevOpsRole which has AdministratorAccess policy attached. An attacker who compromises the EC2 instance running WebServerRole can escalate to full admin access in 2 hops.",
+    "source_arn": "arn:aws:iam::123456789012:role/WebServerRole",
+    "target_arn": "arn:aws:iam::123456789012:role/AdminRole",
+    "is_admin_path": true,
+    "detail": {
+      "source": "arn:aws:iam::123456789012:role/WebServerRole",
+      "destination": "arn:aws:iam::123456789012:role/AdminRole",
+      "path": [
+        {"arn": "arn:aws:iam::123456789012:role/WebServerRole", "action": "sts:AssumeRole"},
+        {"arn": "arn:aws:iam::123456789012:role/DevOpsRole",    "action": "iam:PassRole"},
+        {"arn": "arn:aws:iam::123456789012:role/AdminRole"}
+      ]
+    }
+  },
+  {
+    "title": "IAM User can escalate to Admin via iam:PassRole",
+    "description": "ci-deploy-bot has iam:PassRole permission and can assign AdminRole to a Lambda function it creates, then invoke it to execute actions as admin.",
+    "source_arn": "arn:aws:iam::123456789012:user/ci-deploy-bot",
+    "target_arn": "arn:aws:iam::123456789012:role/AdminRole",
+    "is_admin_path": true,
+    "detail": {
+      "source": "arn:aws:iam::123456789012:user/ci-deploy-bot",
+      "destination": "arn:aws:iam::123456789012:role/AdminRole",
+      "path": [
+        {"arn": "arn:aws:iam::123456789012:user/ci-deploy-bot", "action": "iam:PassRole"},
+        {"arn": "arn:aws:iam::123456789012:role/AdminRole"}
+      ]
+    }
+  },
+  {
+    "title": "DevOpsRole can escalate to Admin via sts:AssumeRole",
+    "description": "DevOpsRole has permission to assume AdminRole directly. Any principal that can assume DevOpsRole effectively has admin access.",
+    "source_arn": "arn:aws:iam::123456789012:role/DevOpsRole",
+    "target_arn": "arn:aws:iam::123456789012:role/AdminRole",
+    "is_admin_path": true,
+    "detail": {
+      "source": "arn:aws:iam::123456789012:role/DevOpsRole",
+      "destination": "arn:aws:iam::123456789012:role/AdminRole",
+      "path": [
+        {"arn": "arn:aws:iam::123456789012:role/DevOpsRole", "action": "sts:AssumeRole"},
+        {"arn": "arn:aws:iam::123456789012:role/AdminRole"}
+      ]
+    }
+  },
+  {
+    "title": "WebServerRole can read secrets from SecretsManager",
+    "description": "WebServerRole has secretsmanager:GetSecretValue permission with a wildcard resource. An attacker can read all secrets including database passwords and API keys.",
+    "source_arn": "arn:aws:iam::123456789012:role/WebServerRole",
+    "target_arn": "arn:aws:iam::123456789012:role/DevOpsRole",
+    "is_admin_path": false,
+    "detail": {
+      "source": "arn:aws:iam::123456789012:role/WebServerRole",
+      "destination": "arn:aws:iam::123456789012:role/DevOpsRole",
+      "path": [
+        {"arn": "arn:aws:iam::123456789012:role/WebServerRole", "action": "secretsmanager:GetSecretValue"},
+        {"arn": "arn:aws:iam::123456789012:role/DevOpsRole"}
+      ]
+    }
+  }
+]
