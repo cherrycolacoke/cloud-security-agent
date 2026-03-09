@@ -273,11 +273,13 @@ def main():
     elif args.file:
         print(f"[{ts()}] Loading {args.file}...")
         with open(args.file) as f:
-            raw = json.load(f)
+            data = json.load(f)
+        raw = data.get("findings", []) if isinstance(data, dict) else data
     else:
         output_file = run_pmapper()
         with open(output_file) as f:
-            raw = json.load(f)
+            data = json.load(f)
+        raw = data.get("findings", []) if isinstance(data, dict) else data
 
     rows = parse_pmapper_output(raw, AWS_ACCOUNT_ID)
     print(f"[{ts()}] Parsed {len(rows)} escalation paths")

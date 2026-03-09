@@ -1,55 +1,41 @@
 # AI Cloud Security Agent Report
-**Generated:** 2026-03-06 05:47 UTC
+**Generated:** 2026-03-09 05:55 UTC
 
 
 
 **Executive Summary**
-
-The AWS account has a high risk level due to the presence of publicly accessible instances, critical CVEs, and IAM privilege escalation paths to admin. The most critical issues are the complete attack chains detected, which could allow an attacker to achieve full account takeover. Immediate attention is required to address these findings and prevent potential security breaches.
+The AWS account has a moderate risk level, with 7 critical/high CVEs detected. Although there are no complete attack chains or privilege escalation paths to admin, the publicly accessible instance with critical CVEs poses a significant risk. Immediate attention is required to remediate these issues to ensure the security and integrity of the account.
 
 **Top 5 Prioritised Actions**
 
-1. **Enforce IMDSv2 on all EC2 instances**:
-	* Run the following AWS CLI command: `aws ec2 modify-instance-metadata-options --instance-id <instance-id> --set-attributes IMDSv2=enabled`
-	* Repeat for all instances identified in the report
-2. **Update instances with critical CVEs**:
-	* Run the following AWS CLI command: `aws ssm update-association --name <association-name> --instance-id <instance-id>`
-	* Replace `<association-name>` with the name of the association containing the critical CVE fix
-	* Repeat for all instances identified in the report
-3. **Remove public access from S3 buckets**:
-	* Navigate to the S3 bucket in the AWS Management Console
-	* Click on the "Permissions" tab
-	* Click on "Edit" next to "Bucket policy"
-	* Remove the public access policy and save changes
-4. **Fix IAM privilege escalation paths**:
-	* Run the following AWS CLI command: `aws iam update-role-policy --role-name <role-name> --policy-document file://path/to/policy.json`
-	* Replace `<role-name>` with the name of the role and `<policy-document>` with the path to the updated policy document
-	* Repeat for all roles identified in the report
-5. **Remove unnecessary IAM roles and users**:
-	* Navigate to the IAM dashboard in the AWS Management Console
-	* Identify and delete any unnecessary roles and users
-	* Repeat for all roles and users identified in the report
+1. **Patch publicly accessible instance with critical CVEs**
+	* Run `aws ec2 modify-instance-attribute --instance-id <instance-id> --attribute instanceType --value t2.micro` to change the instance type to a non-public one.
+	* Run `aws ec2 stop-instances --instance-ids <instance-id>` to stop the instance, then `aws ec2 start-instances --instance-ids <instance-id>` to start it with the new instance type.
+2. **Update instance with critical CVEs**
+	* Run `aws ssm get-patch-baseline --baseline-id <baseline-id>` to get the patch baseline ID.
+	* Run `aws ssm apply-patch-baseline --baseline-id <baseline-id> --instance-ids <instance-id>` to apply the patch baseline to the instance.
+3. **Remove public access from the instance**
+	* Go to the EC2 console, select the instance, and click "Actions" > "Networking" > "Change network settings".
+	* Update the "Public IP" to "None" and save changes.
+4. **Implement IAM role restrictions**
+	* Run `aws iam create-role-policy --role-name <role-name> --policy-name <policy-name> --policy-document file://iam-policy.json` to create a new policy.
+	* Attach the policy to the IAM role using `aws iam attach-role-policy --role-name <role-name> --policy-arn <policy-arn>`.
+5. **Conduct a security group review**
+	* Go to the VPC console, select the security group, and click "Actions" > "View/edit details".
+	* Review the inbound and outbound rules to ensure they are secure and only allow necessary traffic.
 
 **Attack Chain Breakdown**
-
-For each complete attack chain, an attacker would exploit the following steps:
-
-1. **Publicly accessible instance**: An attacker would scan for publicly accessible instances and identify the vulnerable instance.
-2. **EC2 instance does not enforce IMDSv2**: The attacker would exploit the lack of IMDSv2 enforcement to gain access to the instance metadata.
-3. **Critical CVE**: The attacker would exploit the critical CVE to gain remote code execution on the instance.
-4. **IAM instance profile**: The attacker would use the instance profile to assume the WebServerRole, which has permission to escalate to the DevOpsRole.
-5. **DevOpsRole**: The attacker would use the DevOpsRole to assume the AdminRole, granting them full admin access to the account.
+Since no complete attack chains were detected, this section is not applicable.
 
 **IAM Hardening Steps**
+To fix privilege escalation paths, consider the following steps:
 
-To fix the privilege escalation paths, the following changes should be made:
-
-1. **Remove unnecessary permissions**: Review and remove any unnecessary permissions from the WebServerRole and DevOpsRole.
-2. **Restrict role assumption**: Restrict role assumption to only allow trusted entities to assume the roles.
-3. **Implement least privilege**: Implement least privilege principles to ensure that each role only has the necessary permissions to perform its intended function.
+* Run `aws iam list-roles` to list all IAM roles.
+* Review each role's permissions and remove any unnecessary permissions.
+* Use IAM role policies to restrict the actions that can be performed by the role.
+* Run `aws iam update-role --role-name <role-name> --description "Updated role"` to update the role description.
 
 **Quick Wins**
-
-1. **Block public access to S3 buckets**: Block public access to S3 buckets to prevent unauthorized access.
-2. **Update instance metadata**: Update instance metadata to enforce IMDSv2 and prevent unauthorized access.
-3. **Remove unnecessary IAM roles and users**: Remove unnecessary IAM roles and users to reduce the attack surface.
+* Fix publicly accessible instance with critical CVEs (estimated time: 15 minutes)
+* Remove public access from the instance (estimated time: 5 minutes)
+* Implement IAM role restrictions (estimated time: 10 minutes)

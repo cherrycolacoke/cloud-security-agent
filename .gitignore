@@ -5,3 +5,4 @@ __pycache__/
 prowler_output/
 trivy_output/
 *.log
+*.pem

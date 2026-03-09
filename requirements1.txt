@@ -1,4 +1,0 @@
-psycopg2-binary>=2.9
-prowler>=3.0
-boto3>=1.26
-
