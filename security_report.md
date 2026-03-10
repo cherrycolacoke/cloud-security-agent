@@ -1,41 +1,35 @@
 # AI Cloud Security Agent Report
-**Generated:** 2026-03-09 05:55 UTC
+**Generated:** 2026-03-10 05:38 UTC
 
 
 
 **Executive Summary**
-The AWS account has a moderate risk level, with 7 critical/high CVEs detected. Although there are no complete attack chains or privilege escalation paths to admin, the publicly accessible instance with critical CVEs poses a significant risk. Immediate attention is required to remediate these issues to ensure the security and integrity of the account.
+The overall risk level of this AWS account is moderate, with 11 critical/high CVEs and 1 publicly accessible instance. The most critical issues are the vulnerable instances and the lack of patch management, which can be exploited by attackers to gain unauthorized access. However, there are no complete attack chains detected, and no IAM privilege escalation paths to admin, which reduces the risk of full account takeover.
 
 **Top 5 Prioritised Actions**
 
-1. **Patch publicly accessible instance with critical CVEs**
-	* Run `aws ec2 modify-instance-attribute --instance-id <instance-id> --attribute instanceType --value t2.micro` to change the instance type to a non-public one.
-	* Run `aws ec2 stop-instances --instance-ids <instance-id>` to stop the instance, then `aws ec2 start-instances --instance-ids <instance-id>` to start it with the new instance type.
-2. **Update instance with critical CVEs**
-	* Run `aws ssm get-patch-baseline --baseline-id <baseline-id>` to get the patch baseline ID.
-	* Run `aws ssm apply-patch-baseline --baseline-id <baseline-id> --instance-ids <instance-id>` to apply the patch baseline to the instance.
-3. **Remove public access from the instance**
-	* Go to the EC2 console, select the instance, and click "Actions" > "Networking" > "Change network settings".
-	* Update the "Public IP" to "None" and save changes.
-4. **Implement IAM role restrictions**
-	* Run `aws iam create-role-policy --role-name <role-name> --policy-name <policy-name> --policy-document file://iam-policy.json` to create a new policy.
-	* Attach the policy to the IAM role using `aws iam attach-role-policy --role-name <role-name> --policy-arn <policy-arn>`.
-5. **Conduct a security group review**
-	* Go to the VPC console, select the security group, and click "Actions" > "View/edit details".
-	* Review the inbound and outbound rules to ensure they are secure and only allow necessary traffic.
+1. **Patch Critical/High CVEs**: Immediately patch the 11 critical/high CVEs on the publicly accessible instance to prevent exploitation.
+	* AWS CLI command: `aws ssm patch-baseline --operating-system "Your_OS" --patch-group "Your_Patch_Group"`
+	* Console step: Go to Systems Manager > Patch Manager > Patch Baselines, and create a new patch baseline for the affected instance.
+2. **Restrict Public Access to Instance**: Restrict public access to the instance by updating the security group rules.
+	* AWS CLI command: `aws ec2 modify-security-group --group-id "Your_SG_ID" --remove-ingress --protocol tcp --port 22`
+	* Console step: Go to VPC > Security Groups, select the security group associated with the instance, and remove the public ingress rule.
+3. **Implement Patch Management**: Implement a patch management process to ensure timely patching of instances.
+	* AWS CLI command: `aws ssm create-patch-baseline --name "Your_Patch_Baseline" --operating-system "Your_OS"`
+	* Console step: Go to Systems Manager > Patch Manager > Patch Baselines, and create a new patch baseline.
+4. **Monitor Instance Security**: Monitor instance security using AWS services such as Amazon Inspector and Amazon GuardDuty.
+	* AWS CLI command: `aws inspector create-assessment-target --assessment-target-name "Your_Target_Name" --resource-group-arn "Your_Resource_Group_ARN"`
+	* Console step: Go to Inspector > Assessment Targets, and create a new assessment target.
+5. **Review and Refine IAM Roles**: Review and refine IAM roles to ensure least privilege access.
+	* AWS CLI command: `aws iam get-role --role-name "Your_Role_Name"`
+	* Console step: Go to IAM > Roles, select the role, and review the permissions.
 
 **Attack Chain Breakdown**
-Since no complete attack chains were detected, this section is not applicable.
+Not applicable, as no complete attack chains were detected.
 
 **IAM Hardening Steps**
-To fix privilege escalation paths, consider the following steps:
-
-* Run `aws iam list-roles` to list all IAM roles.
-* Review each role's permissions and remove any unnecessary permissions.
-* Use IAM role policies to restrict the actions that can be performed by the role.
-* Run `aws iam update-role --role-name <role-name> --description "Updated role"` to update the role description.
+Not applicable, as no IAM privilege escalation paths to admin were detected.
 
 **Quick Wins**
-* Fix publicly accessible instance with critical CVEs (estimated time: 15 minutes)
-* Remove public access from the instance (estimated time: 5 minutes)
-* Implement IAM role restrictions (estimated time: 10 minutes)
+1. **Restrict Public Access to Instance**: Restrict public access to the instance by updating the security group rules. (Estimated time: 2 minutes)
+2. **Review and Refine IAM Roles**: Review and refine IAM roles to ensure least privilege access. (Estimated time: 3 minutes)

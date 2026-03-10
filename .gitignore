@@ -6,3 +6,6 @@ prowler_output/
 trivy_output/
 *.log
 *.pem
+.DS_Store
+security_report*.md
+logs/

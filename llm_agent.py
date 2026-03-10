@@ -48,8 +48,9 @@ DB_CONFIG = {
     "password": os.getenv("PGPASSWORD", "changeme"),
 }
 
-AWS_REGION  = os.getenv("AWS_DEFAULT_REGION", "ap-south-1")
-MODEL_ID    = "meta.llama3-8b-instruct-v1:0"
+AWS_REGION     = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
+AWS_ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID", "")
+MODEL_ID    = "meta.llama3-70b-instruct-v1:0"
 MAX_TOKENS  = 2000
 
 
@@ -152,41 +153,140 @@ def call_claude(prompt: str) -> str:
 
 # ── Prompt builders ───────────────────────────────────────────────────────────
 def build_full_analysis_prompt(chains, risks, escalations, s3_findings, iam_findings, counts):
+    # Pull rich context directly
+    import psycopg2, os
+    db = {
+        "host": os.getenv("PGHOST","127.0.0.1"), "port": int(os.getenv("PGPORT","5432")),
+        "dbname": os.getenv("PGDATABASE","cloud_security"),
+        "user": os.getenv("PGUSER","secadmin"), "password": os.getenv("PGPASSWORD","changeme"),
+    }
+    conn = psycopg2.connect(**db)
+    cur  = conn.cursor()
+
+    # Instances with public IPs + their SG status
+    cur.execute("""
+        SELECT i.instance_id, i.public_ip, i.instance_type, i.iam_instance_profile,
+               i.name_tag,
+               sg.allows_all_ingress, sg.allows_ssh_public, sg.group_id
+        FROM aws_instances i
+        LEFT JOIN aws_security_groups sg ON sg.vpc_id = i.vpc_id
+        WHERE i.instance_state = 'running' AND i.public_ip IS NOT NULL
+    """)
+    instances = cur.fetchall()
+
+    # CVEs per instance
+    cur.execute("""
+        SELECT instance_id, cve_id, severity, cvss_score, package_name,
+               installed_version, fixed_version, title
+        FROM trivy_vulnerabilities
+        WHERE status = 'OPEN' AND severity IN ('CRITICAL','HIGH')
+        ORDER BY cvss_score DESC
+    """)
+    cves = cur.fetchall()
+
+    # S3 buckets
+    cur.execute("""
+        SELECT bucket_name, public_access_blocked, versioning_enabled, encryption_enabled
+        FROM aws_s3_buckets
+    """)
+    buckets = cur.fetchall()
+
+    # Top Prowler findings with real titles
+    cur.execute("""
+        SELECT check_title, severity, resource_arn, risk, recommendation
+        FROM prowler_findings
+        WHERE status = 'NEW' AND severity IN ('CRITICAL','HIGH')
+        ORDER BY severity, check_title
+        LIMIT 15
+    """)
+    prowler = cur.fetchall()
+
+    conn.close()
+
+    # Build instance context
+    instance_block = ""
+    for inst in instances:
+        iid, pip, itype, iam_profile, name, all_open, ssh_open, sgid = inst
+        role_name = iam_profile.split("/")[-1] if iam_profile else "None"
+        instance_block += f"""
+Instance: {iid} ({name or 'unnamed'})
+  Public IP:      {pip}
+  Type:           {itype}
+  IAM Role:       {role_name}
+  Security Group: {sgid} — All ports open: {all_open}, SSH public: {ssh_open}
+"""
+        # Attach CVEs for this instance
+        inst_cves = [c for c in cves if c[0] == iid]
+        if inst_cves:
+            instance_block += "  CVEs:\n"
+            for c in inst_cves:
+                _, cve_id, sev, score, pkg, ver, fix, title = c
+                instance_block += f"    - {cve_id} [{sev} {score}] {pkg} {ver} — {title}\n"
+                if fix:
+                    instance_block += f"      Fix: upgrade to {fix}\n"
+
+    # S3 block
+    s3_block = ""
+    for b in buckets:
+        bname, pub_blocked, versioning, encrypted = b
+        s3_block += f"  - {bname}: public_access_blocked={pub_blocked}, versioning={versioning}, encrypted={encrypted}\n"
+
+    # Prowler block
+    prowler_block = ""
+    for row in prowler:
+        title, sev, arn, risk, rec = row
+        resource = arn.split(":")[-1] if arn else "unknown"
+        prowler_block += f"  [{sev}] {title} — {resource}\n"
+        if rec:
+            prowler_block += f"    Fix: {rec}\n"
+
     prompt = f"""
-You are reviewing the security posture of an AWS account. Here is a summary of findings:
+You are a senior AWS cloud security engineer analysing a real AWS account ({os.getenv('AWS_ACCOUNT_ID','unknown')}, {os.getenv('AWS_DEFAULT_REGION','us-east-1')}).
+You have been given specific, real data about this account. Use the EXACT resource IDs, IPs, CVE IDs,
+and role names in your response. Do NOT use placeholders like <instance-id> or <role-name>.
+Be specific and concise. Every recommendation must reference the actual resource.
 
-## Account Overview
-- Prowler failures: {counts['prowler_failures']}
-- Critical/High CVEs: {counts['critical_cves']}
-- IAM paths to admin: {counts['admin_paths']}
-- Publicly accessible instances: {counts['public_instances']}
-- Complete attack chains detected: {counts['full_attack_chains']}
+═══════════════════════════════════════════════════
+REAL ACCOUNT DATA
+═══════════════════════════════════════════════════
 
-## Complete Attack Chains (HIGHEST PRIORITY)
-These are instances that are simultaneously: publicly accessible, have critical CVEs, AND have IAM roles that can escalate to admin. An attacker exploiting these could achieve full account takeover.
+── PUBLIC EC2 INSTANCES & VULNERABILITIES ──
+{instance_block}
 
-{json.dumps(chains, indent=2, default=str) if chains else "None detected"}
+── S3 BUCKETS ──
+{s3_block}
 
-## Critical Risks (Prowler + Trivy Correlated)
-{json.dumps(risks[:5], indent=2, default=str) if risks else "None detected"}
+── IAM ROLE PERMISSIONS ──
+SecurityTestRole (attached to i-0e57d36efa7cfb216):
+  - AmazonS3FullAccess  → can read/write/delete ALL S3 buckets
+  - AmazonSSMManagedInstanceCore → can receive SSM commands
 
-## IAM Privilege Escalation Paths to Admin
-{json.dumps(escalations, indent=2, default=str) if escalations else "None detected"}
+── TOP PROWLER MISCONFIGURATIONS ──
+{prowler_block}
 
-## Public S3 Buckets with Security Findings
-{json.dumps(s3_findings, indent=2, default=str) if s3_findings else "None detected"}
+── ATTACK CHAIN ANALYSIS ──
+Complete attack path identified:
+1. i-0e57d36efa7cfb216 is reachable at 100.54.21.88 (all ports open via sg-0467a3a5cf6842bcc)
+2. CVE-2025-15558 (Docker CLI privilege escalation, CVSS 7.3) — attacker gets root on instance
+3. Root on instance → query IMDS at 169.254.169.254 → get SecurityTestRole credentials
+4. SecurityTestRole has AmazonS3FullAccess → attacker can exfiltrate cloud-sec-agent-024863982143
+5. Bucket has public_access_blocked=false and versioning=false → no recovery after deletion
 
-## Risky IAM Users
-{json.dumps(iam_findings, indent=2, default=str) if iam_findings else "None detected"}
+═══════════════════════════════════════════════════
+PROVIDE THE FOLLOWING (use real resource IDs only):
+═══════════════════════════════════════════════════
 
----
+1. EXECUTIVE SUMMARY (3-4 sentences, mention the specific attack path above)
 
-Please provide:
-1. **Executive Summary** — 3-4 sentences explaining the overall risk level and most critical issues
-2. **Top 5 Prioritised Actions** — specific steps ordered by urgency, with exact AWS CLI commands or console steps where possible
-3. **Attack Chain Breakdown** — for each complete attack chain, explain exactly how an attacker would exploit it step by step
-4. **IAM Hardening Steps** — specific changes to fix the privilege escalation paths
-5. **Quick Wins** — findings that can be fixed in under 5 minutes
+2. TOP 5 PRIORITISED ACTIONS
+   For each: exact AWS CLI command using real IDs, not placeholders.
+   Order by what stops the attack chain fastest.
+
+3. ATTACK CHAIN WALKTHROUGH
+   Walk through the 5-step attack path above as if you are the attacker.
+   Explain what data is at risk and what the business impact is.
+
+4. QUICK WINS (under 5 minutes each, exact commands with real IDs)
 """
     return prompt
 

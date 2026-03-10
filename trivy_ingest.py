@@ -34,7 +34,7 @@ DB_CONFIG = {
 }
 AWS_REGION     = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 AWS_ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID", "024863982143")
-S3_BUCKET      = f"cloud-sec-agent-{AWS_ACCOUNT_ID}"
+S3_BUCKET      = "cloud-sec-agent-024863982143"
 OUTPUT_DIR     = Path("./trivy_output")
 
 TRIVY_INSTALL = (
