@@ -1,0 +1,12 @@
+# terraform.tfvars.example
+# ─────────────────────────────────────────────────────────────────────────────
+# Copy this to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — never commit real values.
+# ─────────────────────────────────────────────────────────────────────────────
+
+aws_region  = "us-east-1"
+aws_profile = "default"
+environment = "production"
+
+# Optional: only needed for cross-account role assumption
+# external_id = "your-secret-external-id"

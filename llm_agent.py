@@ -50,7 +50,7 @@ DB_CONFIG = {
 
 AWS_REGION     = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 AWS_ACCOUNT_ID = os.getenv("AWS_ACCOUNT_ID", "")
-MODEL_ID    = "meta.llama3-70b-instruct-v1:0"
+MODEL_ID    = os.getenv("BEDROCK_MODEL_ID", "meta.llama3-70b-instruct-v1:0")
 MAX_TOKENS  = 2000
 
 
