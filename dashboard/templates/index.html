@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Security Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #080b10;
+    --surface:  #0d1117;
+    --border:   #1c2333;
+    --muted:    #3d4a5c;
+    --text:     #c9d1d9;
+    --bright:   #e6edf3;
+    --red:      #ff4d4d;
+    --orange:   #f0883e;
+    --yellow:   #d29922;
+    --green:    #3fb950;
+    --blue:     #58a6ff;
+    --purple:   #bc8cff;
+    --mono:     'Space Mono', monospace;
+    --sans:     'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    background: var(--red);
+    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+    animation: pulse 3s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+
+  .logo h1 {
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--bright);
+  }
+
+  .logo span {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    display: block;
+    margin-top: 2px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  #last-scan {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    animation: blink 2s infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  /* ── Nav tabs ── */
+  nav {
+    display: flex;
+    gap: 2px;
+    padding: 0 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  nav button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 12px 20px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  nav button:hover { color: var(--text); }
+
+  nav button.active {
+    color: var(--blue);
+    border-bottom-color: var(--blue);
+  }
+
+  /* ── Layout ── */
+  main {
+    padding: 28px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Stat cards ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+
+  .stat-card:hover { border-color: var(--muted); }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .stat-card.danger::before  { background: var(--red); }
+  .stat-card.warning::before { background: var(--orange); }
+  .stat-card.info::before    { background: var(--blue); }
+  .stat-card.good::before    { background: var(--green); }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  .stat-value {
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--bright);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stat-card.danger  .stat-value { color: var(--red); }
+  .stat-card.warning .stat-value { color: var(--orange); }
+
+  .stat-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* ── Section headers ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    margin-top: 28px;
+  }
+
+  .section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title::before {
+    content: '//';
+    color: var(--blue);
+  }
+
+  .count-badge {
+    background: var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  /* ── Tables ── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    background: #0d1117;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 10px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  tbody td {
+    padding: 12px 16px;
+    vertical-align: middle;
+    color: var(--text);
+  }
+
+  .mono { font-family: var(--mono); font-size: 11px; }
+  .dim  { color: var(--muted); }
+
+  /* ── Severity badges ── */
+  .badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .badge-critical { background: rgba(255,77,77,0.15);  color: var(--red);    border: 1px solid rgba(255,77,77,0.3); }
+  .badge-high     { background: rgba(240,136,62,0.15); color: var(--orange); border: 1px solid rgba(240,136,62,0.3); }
+  .badge-medium   { background: rgba(210,153,34,0.15); color: var(--yellow); border: 1px solid rgba(210,153,34,0.3); }
+  .badge-low      { background: rgba(63,185,80,0.15);  color: var(--green);  border: 1px solid rgba(63,185,80,0.3); }
+  .badge-admin    { background: rgba(188,140,255,0.15);color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+
+  /* ── Attack chain card ── */
+  .chain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 16px;
+  }
+
+  .chain-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: 8px;
+    padding: 20px;
+    transition: border-color 0.2s;
+  }
+
+  .chain-card:hover { border-color: var(--red); }
+
+  .chain-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .chain-instance {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--bright);
+    font-weight: 700;
+  }
+
+  .chain-ip {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 3px;
+  }
+
+  .risk-score {
+    background: rgba(255,77,77,0.1);
+    border: 1px solid rgba(255,77,77,0.3);
+    color: var(--red);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+
+  .chain-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chain-step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 18px;
+    height: 18px;
+    background: var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .step-text {
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .step-text strong { color: var(--bright); font-family: var(--mono); font-size: 11px; }
+
+  /* ── Severity bar chart ── */
+  .sev-bars { display: flex; flex-direction: column; gap: 10px; }
+
+  .sev-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 60px;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sev-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-align: right;
+  }
+
+  .bar-track {
+    background: var(--border);
+    border-radius: 2px;
+    height: 6px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 1s ease;
+  }
+
+  .sev-count {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--bright);
+    text-align: right;
+  }
+
+  /* ── Loading ── */
+  .loading {
+    text-align: center;
+    padding: 60px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .loading::after {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border: 1px solid var(--muted);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Empty state ── */
+  .empty {
+    text-align: center;
+    padding: 48px;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  /* ── Two column layout ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 900px) {
+    .two-col { grid-template-columns: 1fr; }
+    .chain-grid { grid-template-columns: 1fr; }
+    header { flex-direction: column; gap: 12px; }
+    nav { padding: 0 16px; overflow-x: auto; }
+    main { padding: 20px 16px; }
+  }
+
+  /* ── Resource ARN truncation ── */
+  .arn {
+    max-width: 280px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ── Fade in animation ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .fadeup { animation: fadeUp 0.4s ease forwards; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"></div>
+    <div>
+      <h1>Cloud Security Agent</h1>
+      <span id="last-scan">Loading...</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="status-dot"></div>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="showTab('overview')">Overview</button>
+  <button onclick="showTab('chains')">Attack Chains</button>
+  <button onclick="showTab('findings')">Findings</button>
+  <button onclick="showTab('cves')">CVEs</button>
+  <button onclick="showTab('iam')">IAM Risks</button>
+  <button onclick="showTab('inventory')">Inventory</button>
+</nav>
+
+<main>
+
+  <!-- ── OVERVIEW ─────────────────────────────────────────────────────── -->
+  <div id="tab-overview" class="tab-panel active">
+
+    <div class="stats-grid" id="stats-grid">
+      <div class="loading">Loading</div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <div class="section-header">
+          <div class="section-title">Findings by Severity</div>
+        </div>
+        <div class="table-wrap" style="padding: 24px;">
+          <div class="sev-bars" id="sev-bars">
+            <div class="loading">Loading</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-header">
+          <div class="section-title">Top Vulnerable Services</div>
+        </div>
+        <div class="table-wrap" style="padding: 24px;">
+          <div class="sev-bars" id="svc-bars">
+            <div class="loading">Loading</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── ATTACK CHAINS ─────────────────────────────────────────────────── -->
+  <div id="tab-chains" class="tab-panel">
+    <div class="section-header">
+      <div class="section-title">Complete Attack Chains</div>
+      <span class="count-badge" id="chains-count">—</span>
+    </div>
+    <div class="chain-grid" id="chains-grid">
+      <div class="loading">Loading</div>
+    </div>
+  </div>
+
+  <!-- ── FINDINGS ──────────────────────────────────────────────────────── -->
+  <div id="tab-findings" class="tab-panel">
+    <div class="section-header">
+      <div class="section-title">Critical & High Findings</div>
+      <span class="count-badge" id="findings-count">—</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Check</th>
+            <th>Service</th>
+            <th>Resource</th>
+            <th>Region</th>
+            <th>Detected</th>
+          </tr>
+        </thead>
+        <tbody id="findings-tbody">
+          <tr><td colspan="6" class="loading">Loading</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── CVEs ──────────────────────────────────────────────────────────── -->
+  <div id="tab-cves" class="tab-panel">
+    <div class="section-header">
+      <div class="section-title">Critical & High CVEs</div>
+      <span class="count-badge" id="cves-count">—</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>CVE ID</th>
+            <th>Severity</th>
+            <th>CVSS</th>
+            <th>Instance</th>
+            <th>Package</th>
+            <th>Installed</th>
+            <th>Fix</th>
+          </tr>
+        </thead>
+        <tbody id="cves-tbody">
+          <tr><td colspan="7" class="loading">Loading</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── IAM ───────────────────────────────────────────────────────────── -->
+  <div id="tab-iam" class="tab-panel">
+    <div class="section-header">
+      <div class="section-title">IAM Escalation Paths</div>
+      <span class="count-badge" id="iam-count">—</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Severity</th>
+            <th>Source</th>
+            <th>Target</th>
+            <th>Admin?</th>
+            <th>Hops</th>
+            <th>Path</th>
+          </tr>
+        </thead>
+        <tbody id="iam-tbody">
+          <tr><td colspan="6" class="loading">Loading</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── INVENTORY ─────────────────────────────────────────────────────── -->
+  <div id="tab-inventory" class="tab-panel">
+    <div class="section-header">
+      <div class="section-title">Running EC2 Instances</div>
+      <span class="count-badge" id="inv-count">—</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Instance ID</th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Region</th>
+            <th>Public IP</th>
+            <th>All Ports Open</th>
+            <th>SSH Public</th>
+          </tr>
+        </thead>
+        <tbody id="inv-tbody">
+          <tr><td colspan="7" class="loading">Loading</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────────────────
+const loaded = {};
+
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+  if (!loaded[name]) { loadTab(name); loaded[name] = true; }
+}
+
+function loadTab(name) {
+  const loaders = {
+    overview:  loadOverview,
+    chains:    loadChains,
+    findings:  loadFindings,
+    cves:      loadCVEs,
+    iam:       loadIAM,
+    inventory: loadInventory,
+  };
+  if (loaders[name]) loaders[name]();
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function badge(sev) {
+  const s = (sev || '').toLowerCase();
+  return `<span class="badge badge-${s}">${sev || '—'}</span>`;
+}
+
+function truncate(str, n) {
+  if (!str) return '<span class="dim">—</span>';
+  return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
+async function fetchJSON(url) {
+  const res = await fetch(url);
+  return res.json();
+}
+
+// ── Overview ───────────────────────────────────────────────────────────────
+async function loadOverview() {
+  const [summary, sevs, svcs] = await Promise.all([
+    fetchJSON('/api/summary'),
+    fetchJSON('/api/severity_breakdown'),
+    fetchJSON('/api/services_breakdown'),
+  ]);
+
+  document.getElementById('last-scan').textContent =
+    summary.last_scan ? 'Last scan: ' + summary.last_scan : 'No scans yet';
+
+  // Stat cards
+  const cards = [
+    { label: 'Attack Chains',     value: summary.attack_chains    || 0, cls: 'danger',  sub: 'complete exploitable paths' },
+    { label: 'Critical Findings', value: summary.critical_findings || 0, cls: 'danger',  sub: 'Prowler CRITICAL' },
+    { label: 'High Findings',     value: summary.high_findings     || 0, cls: 'warning', sub: 'Prowler HIGH' },
+    { label: 'Critical CVEs',     value: summary.critical_cves     || 0, cls: 'danger',  sub: 'open vulnerabilities' },
+    { label: 'Admin IAM Paths',   value: summary.admin_paths       || 0, cls: 'warning', sub: 'escalation to admin' },
+    { label: 'Public Instances',  value: summary.public_instances  || 0, cls: 'warning', sub: `of ${summary.running_instances || 0} running` },
+    { label: 'Public S3 Buckets', value: summary.public_buckets    || 0, cls: summary.public_buckets > 0 ? 'danger' : 'good', sub: `of ${summary.s3_buckets || 0} total` },
+    { label: 'Total Failures',    value: summary.prowler_failures  || 0, cls: 'info',    sub: 'all Prowler checks' },
+  ];
+
+  document.getElementById('stats-grid').innerHTML = cards.map(c => `
+    <div class="stat-card ${c.cls} fadeup">
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-value">${c.value}</div>
+      <div class="stat-sub">${c.sub}</div>
+    </div>
+  `).join('');
+
+  // Severity bars
+  const maxSev = Math.max(...sevs.map(r => r.total), 1);
+  const sevColors = { CRITICAL: '#ff4d4d', HIGH: '#f0883e', MEDIUM: '#d29922', LOW: '#3fb950', INFORMATIONAL: '#58a6ff' };
+  document.getElementById('sev-bars').innerHTML = sevs.length ? sevs.map(r => `
+    <div class="sev-row">
+      <div class="sev-label" style="color:${sevColors[r.severity] || '#888'}">${r.severity}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(r.total/maxSev*100).toFixed(1)}%;background:${sevColors[r.severity] || '#888'}"></div>
+      </div>
+      <div class="sev-count">${r.total}</div>
+    </div>
+  `).join('') : '<div class="empty">No findings yet — run a scan first</div>';
+
+  // Service bars
+  const maxSvc = Math.max(...svcs.map(r => r.failures), 1);
+  document.getElementById('svc-bars').innerHTML = svcs.length ? svcs.map(r => `
+    <div class="sev-row">
+      <div class="sev-label" style="color:var(--blue)">${r.service}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${(r.failures/maxSvc*100).toFixed(1)}%;background:var(--blue)"></div>
+      </div>
+      <div class="sev-count">${r.failures}</div>
+    </div>
+  `).join('') : '<div class="empty">No data yet</div>';
+}
+
+// ── Attack Chains ──────────────────────────────────────────────────────────
+async function loadChains() {
+  const chains = await fetchJSON('/api/attack_chains');
+  document.getElementById('chains-count').textContent = chains.length;
+
+  if (!chains.length) {
+    document.getElementById('chains-grid').innerHTML =
+      '<div class="empty">✓ No complete attack chains found</div>';
+    return;
+  }
+
+  document.getElementById('chains-grid').innerHTML = chains.map(c => `
+    <div class="chain-card fadeup">
+      <div class="chain-header">
+        <div>
+          <div class="chain-instance">${c.instance_id || '—'}</div>
+          <div class="chain-ip">${c.name_tag || 'unnamed'} · ${c.public_ip || 'no public IP'} · ${c.region || '—'}</div>
+        </div>
+        <div class="risk-score">RISK ${c.risk_score || '—'}</div>
+      </div>
+      <div class="chain-steps">
+        <div class="chain-step">
+          <div class="step-num">1</div>
+          <div class="step-text">Instance reachable at <strong>${c.public_ip || '—'}</strong> — ${c.misconfiguration || 'misconfiguration detected'} <span class="badge badge-${(c.misconfig_severity||'').toLowerCase()}">${c.misconfig_severity||''}</span></div>
+        </div>
+        ${c.cve_id ? `
+        <div class="chain-step">
+          <div class="step-num">2</div>
+          <div class="step-text"><strong>${c.cve_id}</strong> (CVSS ${c.cvss_score || '?'}) in <strong>${c.package_name || '—'}</strong>${c.fixed_version ? ' — fix: ' + c.fixed_version : ' — no fix available'}</div>
+        </div>` : ''}
+        ${c.escalation_path ? `
+        <div class="chain-step">
+          <div class="step-num">3</div>
+          <div class="step-text">IAM escalation → <strong>${c.escalates_to || 'admin'}</strong> ${c.target_is_admin ? '<span class="badge badge-admin">ADMIN</span>' : ''}</div>
+        </div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Findings ───────────────────────────────────────────────────────────────
+async function loadFindings() {
+  const rows = await fetchJSON('/api/critical_findings');
+  document.getElementById('findings-count').textContent = rows.length;
+
+  document.getElementById('findings-tbody').innerHTML = rows.length ? rows.map(r => `
+    <tr class="fadeup">
+      <td>${badge(r.severity)}</td>
+      <td style="max-width:280px;font-size:12px">${r.check_title || '—'}</td>
+      <td><span class="mono dim">${r.service || '—'}</span></td>
+      <td><div class="arn" title="${r.resource_arn || ''}">${r.resource_arn ? r.resource_arn.split(':').pop() : '—'}</div></td>
+      <td><span class="mono dim">${r.region || '—'}</span></td>
+      <td><span class="mono dim">${r.ingested_at || '—'}</span></td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty">No critical findings — run a scan first</td></tr>';
+}
+
+// ── CVEs ───────────────────────────────────────────────────────────────────
+async function loadCVEs() {
+  const rows = await fetchJSON('/api/cves');
+  document.getElementById('cves-count').textContent = rows.length;
+
+  document.getElementById('cves-tbody').innerHTML = rows.length ? rows.map(r => `
+    <tr class="fadeup">
+      <td><span class="mono" style="color:var(--blue)">${r.cve_id || '—'}</span></td>
+      <td>${badge(r.severity)}</td>
+      <td><span class="mono" style="color:${r.cvss_score >= 9 ? 'var(--red)' : r.cvss_score >= 7 ? 'var(--orange)' : 'var(--text)'}">${r.cvss_score || '—'}</span></td>
+      <td><span class="mono dim">${r.instance_id || '—'}</span></td>
+      <td><span class="mono">${r.package_name || '—'}</span></td>
+      <td><span class="mono dim">${r.installed_version || '—'}</span></td>
+      <td><span class="mono" style="color:${r.fixed_version ? 'var(--green)' : 'var(--red)'}">${r.fixed_version || 'no fix'}</span></td>
+    </tr>
+  `).join('') : '<tr><td colspan="7" class="empty">No CVEs found — run a Trivy scan first</td></tr>';
+}
+
+// ── IAM ────────────────────────────────────────────────────────────────────
+async function loadIAM() {
+  const rows = await fetchJSON('/api/iam_risks');
+  document.getElementById('iam-count').textContent = rows.length;
+
+  document.getElementById('iam-tbody').innerHTML = rows.length ? rows.map(r => `
+    <tr class="fadeup">
+      <td>${badge(r.severity)}</td>
+      <td><span class="mono">${r.source_name || '—'}</span><br><span class="mono dim">${r.source_type || ''}</span></td>
+      <td><span class="mono">${r.target_name || '—'}</span><br><span class="mono dim">${r.target_type || ''}</span></td>
+      <td>${r.target_is_admin ? '<span class="badge badge-admin">YES</span>' : '<span class="dim mono">no</span>'}</td>
+      <td><span class="mono">${r.hops || '—'}</span></td>
+      <td style="max-width:300px;font-size:11px;font-family:var(--mono);color:var(--muted);word-break:break-all">${truncate(r.path, 80)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" class="empty">No IAM risks found — run PMapper first</td></tr>';
+}
+
+// ── Inventory ──────────────────────────────────────────────────────────────
+async function loadInventory() {
+  const rows = await fetchJSON('/api/instances');
+  document.getElementById('inv-count').textContent = rows.length;
+
+  document.getElementById('inv-tbody').innerHTML = rows.length ? rows.map(r => `
+    <tr class="fadeup">
+      <td><span class="mono" style="color:var(--blue)">${r.instance_id || '—'}</span></td>
+      <td>${r.name_tag || '<span class="dim">unnamed</span>'}</td>
+      <td><span class="mono dim">${r.instance_type || '—'}</span></td>
+      <td><span class="mono dim">${r.region || '—'}</span></td>
+      <td><span class="mono" style="color:${r.public_ip ? 'var(--orange)' : 'var(--muted)'}">${r.public_ip || 'private'}</span></td>
+      <td>${r.allows_all_ingress ? '<span class="badge badge-critical">YES</span>' : '<span class="badge badge-low">no</span>'}</td>
+      <td>${r.allows_ssh_public ? '<span class="badge badge-high">YES</span>' : '<span class="badge badge-low">no</span>'}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="7" class="empty">No instances found — run Steampipe first</td></tr>';
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+loadOverview();
+loaded['overview'] = true;
+</script>
+</body>
+</html>
