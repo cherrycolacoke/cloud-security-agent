@@ -1,6 +1,6 @@
 # terraform.tfvars.example
 # ─────────────────────────────────────────────────────────────────────────────
-# Copy this to terraform.tfvars and fill in your values.
+# Copy to terraform.tfvars and fill in your values.
 # terraform.tfvars is gitignored — never commit real values.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -8,5 +8,12 @@ aws_region  = "us-east-1"
 aws_profile = "default"
 environment = "production"
 
-# Optional: only needed for cross-account role assumption
-# external_id = "your-secret-external-id"
+# ── EC2 deployment ────────────────────────────────────────────────────────────
+# Set to true to provision an EC2 instance with the full stack
+deploy_ec2        = true
+ec2_instance_type = "t3.small"   # ~$15/month
+ec2_allowed_cidr  = "0.0.0.0/0" # restrict to your IP for extra security
+key_pair_name     = ""           # optional: your EC2 key pair name for SSH
+
+# ── Optional ──────────────────────────────────────────────────────────────────
+# external_id = "your-secret-external-id"  # only for cross-account assumption

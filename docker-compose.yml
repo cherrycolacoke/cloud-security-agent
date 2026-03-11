@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: cloud-security-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${PGUSER:-secadmin}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-changeme}
+      POSTGRES_DB:       ${PGDATABASE:-cloud_security}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./steampipe_schema.sql:/docker-entrypoint-initdb.d/02_steampipe.sql
+      - ./trivy_schema.sql:/docker-entrypoint-initdb.d/03_trivy.sql
+      - ./pmapper_schema.sql:/docker-entrypoint-initdb.d/04_pmapper.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-secadmin} -d ${PGDATABASE:-cloud_security}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - agent-net
+
+  # ── Dashboard ───────────────────────────────────────────────────────────────
+  dashboard:
+    build: .
+    container_name: cloud-security-dashboard
+    restart: unless-stopped
+    ports:
+      - "80:5001"
+    environment:
+      PGHOST:            postgres
+      PGPORT:            5432
+      PGDATABASE:        ${PGDATABASE:-cloud_security}
+      PGUSER:            ${PGUSER:-secadmin}
+      PGPASSWORD:        ${PGPASSWORD:-changeme}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCOUNT_ID:    ${AWS_ACCOUNT_ID:-}
+      BEDROCK_MODEL_ID:  ${BEDROCK_MODEL_ID:-meta.llama3-70b-instruct-v1:0}
+    volumes:
+      - ./security_report*.md:/app/security_report.md:ro
+      - ~/.aws:/root/.aws:ro          # mount AWS credentials read-only
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - agent-net
+
+  # ── Scanner (runs full scan on demand via: docker compose run scanner) ──────
+  scanner:
+    build: .
+    container_name: cloud-security-scanner
+    profiles: ["scan"]              # only runs when explicitly called
+    environment:
+      PGHOST:            postgres
+      PGPORT:            5432
+      PGDATABASE:        ${PGDATABASE:-cloud_security}
+      PGUSER:            ${PGUSER:-secadmin}
+      PGPASSWORD:        ${PGPASSWORD:-changeme}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION:-us-east-1}
+      AWS_ACCOUNT_ID:    ${AWS_ACCOUNT_ID:-}
+      AWS_PROFILE:       ${AWS_PROFILE:-default}
+      BEDROCK_MODEL_ID:  ${BEDROCK_MODEL_ID:-meta.llama3-70b-instruct-v1:0}
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+    volumes:
+      - ~/.aws:/root/.aws:ro
+      - ./accounts.yaml:/app/accounts.yaml:ro
+      - ./logs:/app/logs
+      - .:/app/output                # scan reports written here
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["python3", "run_full_scan.py"]
+    networks:
+      - agent-net
+
+volumes:
+  postgres_data:
+
+networks:
+  agent-net:
+    driver: bridge
