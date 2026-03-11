@@ -1,30 +1,29 @@
-# accounts.yaml
+# accounts.yaml.example
 # ─────────────────────────────────────────────────────────────────────────────
-# Registry of AWS accounts scanned by the Cloud Security Agent.
+# Copy this file to accounts.yaml and fill in your AWS account details.
+# accounts.yaml is gitignored — never commit real account IDs.
 #
 # Auth methods (pick one per account):
 #   profile:   uses a named AWS CLI profile from ~/.aws/credentials
 #   role_arn:  assumes a cross-account IAM role via STS (recommended for prod)
-#
-# Add as many accounts as needed.
 # ─────────────────────────────────────────────────────────────────────────────
 
 accounts:
-  - id: "024863982143"
+  - id: "123456789012"          # your AWS account ID
     name: production
     region: us-east-1
-    profile: default          # AWS CLI profile name
+    role_arn: arn:aws:iam::123456789012:role/CloudSecurityAgentRole
 
-  # Example: cross-account via role assumption
+  # Example: second account via CLI profile
   # - id: "111122223333"
   #   name: staging
   #   region: us-east-1
-  #   role_arn: arn:aws:iam::111122223333:role/SecurityAuditRole
-  #   external_id: optional-external-id   # omit if not required
-  #   session_duration: 3600              # seconds, default 3600
+  #   profile: staging-profile
 
-  # Example: second profile
+  # Example: cross-account with external ID
   # - id: "444455556666"
   #   name: dev
   #   region: ap-south-1
-  #   profile: dev-profile
+  #   role_arn: arn:aws:iam::444455556666:role/SecurityAuditRole
+  #   external_id: your-external-id
+  #   session_duration: 3600

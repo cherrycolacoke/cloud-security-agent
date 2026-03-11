@@ -1,152 +1,48 @@
 # AI Cloud Security Agent
 
-An automated AWS security scanning agent that combines Prowler, Trivy, Steampipe, and PMapper
-into a single pipeline — with an LLM (via Amazon Bedrock) generating prioritised remediation reports.
+An AI-powered AWS security scanner that combines Prowler, Trivy, Steampipe, and PMapper into a single pipeline — ingesting findings into PostgreSQL, generating LLM-powered remediation reports via Amazon Bedrock, and surfacing everything in a web dashboard.
 
-Supports **multiple AWS accounts** out of the box.
+![Python](https://img.shields.io/badge/Python-3.11-blue?style=flat-square&logo=python)
+![AWS](https://img.shields.io/badge/AWS-Bedrock-orange?style=flat-square&logo=amazon-aws)
+![Terraform](https://img.shields.io/badge/Terraform-1.x-purple?style=flat-square&logo=terraform)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat-square&logo=docker)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 ---
 
 ## What It Does
 
-1. **Prowler** — scans AWS config for misconfigurations (297+ checks)
-2. **Trivy** — scans EC2 instances for CVEs via SSM
-3. **Steampipe** — syncs live AWS inventory (EC2, S3, IAM, VPCs, Security Groups)
-4. **PMapper** — finds IAM privilege escalation paths
-5. **LLM Agent** — sends all findings to Llama 3 via Amazon Bedrock, generates a prioritised markdown report
-6. **Slack** — sends alerts for critical attack chains automatically
+1. **Scans** your AWS account with Prowler (misconfigurations), Trivy (CVEs), Steampipe (inventory), and PMapper (IAM privilege escalation)
+2. **Ingests** all findings into a PostgreSQL database with a unified schema
+3. **Correlates** findings into complete attack chains — e.g. public instance + unpatched CVE + overprivileged IAM role = full compromise path
+4. **Generates** an AI security report with prioritised remediation steps and AWS CLI commands via Amazon Bedrock (Llama 3)
+5. **Alerts** on new critical findings via Slack
+6. **Visualises** everything in a password-protected web dashboard
 
 ---
 
-## Quickstart
+## Dashboard
 
-### Prerequisites
-- Python 3.11+
-- Docker (for PostgreSQL)
-- AWS CLI configured (`aws configure`)
-- Terraform 1.3+ (for AWS setup)
+| Overview | Attack Chains | LLM Report |
+|----------|--------------|------------|
+| Stat cards, severity breakdown, top vulnerable services | Complete exploit paths ranked by risk score | AI-generated remediation steps with copy-paste AWS CLI commands |
 
 ---
 
-### Step 1 — Provision AWS Infrastructure (2 minutes)
+## Architecture
 
-This creates the IAM role, S3 bucket, and permissions your agent needs.
-
-```bash
-cd terraform/
-cp terraform.tfvars.example terraform.tfvars
-# Edit terraform.tfvars — set your region and AWS profile
-
-terraform init
-terraform apply
 ```
-
-Terraform will output your **role ARN** and **account ID** — copy these for Step 3.
-
----
-
-### Step 2 — Set Up the Agent Locally
-
-```bash
-git clone https://github.com/cherrycolacoke/cloud-security-agent
-cd cloud-security-agent
-
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# Copy and fill in environment variables
-cp .env.example .env
-# Edit .env — set PGPASSWORD, SLACK_WEBHOOK_URL, etc.
-source .env
+┌─────────────────────────────────────────────────────────────┐
+│                        Your AWS Account                      │
+│                                                             │
+│   Prowler ──┐                                               │
+│   Trivy   ──┼──► ingestion/ ──► PostgreSQL ──► LLM Agent   │
+│   Steampipe─┤        │              │              │        │
+│   PMapper ──┘        │         Dashboard        Slack       │
+│                      │              │                       │
+│              sample_data/    http://localhost:5001          │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-Start PostgreSQL:
-```bash
-docker run -d \
-  --name cloud-security-db \
-  -e POSTGRES_USER=secadmin \
-  -e POSTGRES_PASSWORD=changeme \
-  -e POSTGRES_DB=cloud_security \
-  -p 5432:5432 \
-  postgres:15
-
-psql -h localhost -U secadmin -d cloud_security -f init.sql
-psql -h localhost -U secadmin -d cloud_security -f steampipe_schema.sql
-psql -h localhost -U secadmin -d cloud_security -f trivy_schema.sql
-psql -h localhost -U secadmin -d cloud_security -f pmapper_schema.sql
-```
-
----
-
-### Step 3 — Configure Your Accounts
-
-Edit `accounts.yaml` with the outputs from `terraform apply`:
-
-```yaml
-accounts:
-  - id: "123456789012"       # your AWS account ID
-    name: production
-    region: us-east-1
-    role_arn: arn:aws:iam::123456789012:role/CloudSecurityAgentRole
-```
-
-Verify credentials work:
-```bash
-python3 account_manager.py --verify
-```
-
----
-
-### Step 4 — Run
-
-```bash
-# Full scan (live AWS)
-python3 run_full_scan.py
-
-# Single account
-python3 run_full_scan.py --account production
-
-# Sample data only (no AWS needed — for testing)
-python3 run_full_scan.py --sample
-
-# Skip specific steps
-python3 run_full_scan.py --skip trivy steampipe
-```
-
-The LLM report is saved to `security_report_<account>.md`.
-
----
-
-### Step 5 — Schedule Nightly Scans (Optional)
-
-```bash
-bash cron_setup.sh
-```
-
-This installs a cron job that runs the full pipeline every night at 1am.
-
----
-
-## Adding More AWS Accounts
-
-Just add a block to `accounts.yaml`:
-
-```yaml
-accounts:
-  - id: "111122223333"
-    name: staging
-    region: us-east-1
-    role_arn: arn:aws:iam::111122223333:role/CloudSecurityAgentRole
-
-  - id: "444455556666"
-    name: dev
-    region: ap-south-1
-    profile: dev-profile    # or use role_arn for cross-account
-```
-
-Run Terraform in each new account to provision the role, then add to `accounts.yaml`.
-The next `run_full_scan.py` run will scan all accounts automatically.
 
 ---
 
@@ -154,37 +50,185 @@ The next `run_full_scan.py` run will scan all accounts automatically.
 
 ```
 cloud-security-agent/
-├── terraform/               # AWS infrastructure (IAM, S3)
-│   ├── main.tf
+│
+├── ingestion/                  # Data ingestion from each scanner
+│   ├── prowler_ingest.py       # Prowler findings → PostgreSQL
+│   ├── trivy_ingest.py         # Trivy CVEs → PostgreSQL
+│   ├── steampipe_ingest.py     # AWS inventory → PostgreSQL
+│   └── pmapper_ingest.py       # IAM risk graph → PostgreSQL
+│
+├── dashboard/                  # Web dashboard
+│   ├── dashboard.py            # Flask app with REST API
+│   └── templates/
+│       ├── index.html          # Main dashboard (6 tabs)
+│       └── login.html          # Password-protected login
+│
+├── schema/                     # PostgreSQL schema definitions
+│   ├── init.sql                # Core findings tables + views
+│   ├── steampipe_schema.sql    # AWS inventory tables
+│   ├── trivy_schema.sql        # CVE tables
+│   └── pmapper_schema.sql      # IAM risk graph tables
+│
+├── terraform/                  # AWS infrastructure as code
+│   ├── main.tf                 # IAM role + S3 bucket
+│   ├── ec2.tf                  # EC2 instance (optional)
 │   ├── variables.tf
 │   ├── outputs.tf
 │   └── terraform.tfvars.example
-├── account_manager.py       # Multi-account credential management
-├── accounts.yaml            # Account registry
-├── run_full_scan.py         # Main pipeline orchestrator
-├── llm_agent.py             # LLM analysis via Amazon Bedrock
-├── prowler_ingest.py        # Prowler findings → PostgreSQL
-├── trivy_ingest.py          # CVE scans via SSM → PostgreSQL
-├── steampipe_ingest.py      # AWS inventory → PostgreSQL
-├── pmapper_ingest.py        # IAM escalation paths → PostgreSQL
-├── auto_remediate.py        # Auto-fix findings (with confirmation)
-├── slack_alert.py           # Slack notifications
-├── init.sql                 # Core DB schema
-├── steampipe_schema.sql     # Inventory tables
-├── trivy_schema.sql         # CVE tables
-├── pmapper_schema.sql       # IAM risk tables
-└── cron_setup.sh            # Nightly cron installer
+│
+├── scripts/                    # Shell scripts
+│   ├── run_prowler.sh          # Prowler scan wrapper
+│   ├── steampipe_setup.sh      # Steampipe install + config
+│   └── cron_setup.sh           # Nightly cron job setup
+│
+├── sample_data/                # Sample scan outputs for testing
+│   ├── sample_findings.json    # Prowler sample
+│   ├── steampipe_sample.json   # Steampipe sample
+│   ├── pmapper_sample.json     # PMapper sample
+│   └── i-0abc123def456.json    # Trivy sample
+│
+├── run_full_scan.py            # Main pipeline orchestrator
+├── llm_agent.py                # Amazon Bedrock LLM report generator
+├── account_manager.py          # Multi-account AWS session manager
+├── slack_alert.py              # Slack notifications
+│
+├── accounts.yaml.example       # Account config template (copy → accounts.yaml)
+├── .env.example                # Environment variables template (copy → .env)
+├── docker-compose.yml          # Full stack: Postgres + dashboard + scanner
+├── Dockerfile                  # Container image
+├── deploy.sh                   # One-command deployment
+├── requirements.txt
+└── SETUP.md                    # Detailed setup guide
 ```
 
 ---
 
-## IAM Permissions
+## Quick Start
 
-The Terraform module grants:
-- `SecurityAudit` — read-only access for Prowler checks
-- `ReadOnlyAccess` — inventory access for Steampipe
-- `ssm:SendCommand` — run Trivy on EC2 instances
-- `s3:*` on the agent bucket — store Trivy results
-- `bedrock:InvokeModel` — call Llama 3 for analysis
+### Prerequisites
 
-No write permissions to your AWS resources (except auto_remediate.py which requires explicit confirmation).
+- AWS account with billing enabled
+- [Docker Desktop](https://docs.docker.com/get-docker/)
+- [AWS CLI](https://aws.amazon.com/cli/) configured
+- [Terraform](https://developer.hashicorp.com/terraform/install) ≥ 1.0
+
+### 1. Clone
+
+```bash
+git clone https://github.com/cherrycolacoke/cloud-security-agent
+cd cloud-security-agent
+```
+
+### 2. Configure
+
+```bash
+cp .env.example .env
+cp accounts.yaml.example accounts.yaml
+```
+
+Edit `.env` with your AWS account ID, DB password, and dashboard password.  
+Edit `accounts.yaml` with your account ID and IAM role ARN.
+
+### 3. Provision AWS Infrastructure
+
+```bash
+cd terraform/
+cp terraform.tfvars.example terraform.tfvars
+# set deploy_ec2 = true if you want a hosted dashboard
+terraform init && terraform apply
+```
+
+Terraform creates the IAM role, S3 bucket, and optionally an EC2 instance.  
+Copy the `role_arn` output into `accounts.yaml`.
+
+### 4. Deploy
+
+```bash
+source .env
+bash deploy.sh
+```
+
+Open **http://localhost:5001** (or the EC2 IP if you deployed to AWS).
+
+### 5. Run a Scan
+
+```bash
+bash deploy.sh --sample   # instant test with sample data
+bash deploy.sh --scan     # full live scan (~15 min)
+```
+
+Refresh the dashboard — all findings, CVEs, attack chains, and the LLM report populate automatically.
+
+---
+
+## Configuration
+
+### `.env`
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `AWS_ACCOUNT_ID` | Your AWS account ID | required |
+| `AWS_DEFAULT_REGION` | Primary region | `us-east-1` |
+| `BEDROCK_MODEL_ID` | Bedrock model to use | `meta.llama3-70b-instruct-v1:0` |
+| `PGPASSWORD` | PostgreSQL password | `changeme` |
+| `DASHBOARD_PASSWORD` | Web dashboard login password | required |
+| `SLACK_WEBHOOK_URL` | Slack webhook for alerts | optional |
+
+### `accounts.yaml`
+
+Add as many accounts as needed. Supports AWS CLI profiles and cross-account role assumption via STS.
+
+---
+
+## IAM Permissions Required
+
+The `CloudSecurityAgentRole` created by Terraform has:
+
+- `SecurityAudit` (AWS managed) — read-only access to all services
+- `ReadOnlyAccess` (AWS managed) — inventory and config
+- Inline policy for SSM, S3 (report storage), and Bedrock (LLM)
+
+---
+
+## Deployment Commands
+
+```bash
+bash deploy.sh              # start dashboard + postgres
+bash deploy.sh --scan       # run full live scan
+bash deploy.sh --sample     # test with sample data
+bash deploy.sh --logs       # tail dashboard logs
+bash deploy.sh --stop       # stop all containers
+```
+
+---
+
+## Scanning Tools
+
+| Tool | What It Scans | Output |
+|------|--------------|--------|
+| [Prowler](https://github.com/prowler-cloud/prowler) | 300+ AWS security checks | Misconfigurations, compliance |
+| [Trivy](https://github.com/aquasecurity/trivy) | EC2 instance CVEs | CVE IDs, CVSS scores, fix versions |
+| [Steampipe](https://steampipe.io) | AWS resource inventory | EC2, S3, IAM, SGs, VPCs |
+| [PMapper](https://github.com/nccgroup/PMapper) | IAM privilege escalation | Attack paths to admin |
+
+---
+
+## Tech Stack
+
+- **Backend:** Python 3.11, Flask, psycopg2
+- **Database:** PostgreSQL 15
+- **AI:** Amazon Bedrock (Meta Llama 3 70B)
+- **Infrastructure:** Terraform, Docker Compose
+- **Scanning:** Prowler, Trivy, Steampipe, PMapper
+
+---
+
+## Detailed Setup
+
+See [SETUP.md](SETUP.md) for a full step-by-step guide covering tool installation, Bedrock model access, and troubleshooting.
+
+---
+
+## License
+
+MIT

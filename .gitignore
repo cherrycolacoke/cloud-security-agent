@@ -1,11 +1,45 @@
+# ── Environment & secrets ─────────────────────────────────────────────────────
 .env
+*.pem
+*.key
+*.tfvars
+!terraform/terraform.tfvars.example
+accounts.yaml        # contains real AWS account IDs — copy from accounts.yaml.example
+
+# ── Python ────────────────────────────────────────────────────────────────────
 .venv/
 __pycache__/
 *.pyc
-prowler_output/
-trivy_output/
-*.log
-*.pem
-.DS_Store
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# ── Generated scan outputs ────────────────────────────────────────────────────
 security_report*.md
 logs/
+prowler_output/
+trivy_output/
+pmapper_output/
+*.log
+
+# ── Terraform state ───────────────────────────────────────────────────────────
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+.docker/
+
+# ── Editor ────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
