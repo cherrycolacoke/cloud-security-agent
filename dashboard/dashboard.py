@@ -20,12 +20,43 @@ from pathlib import Path
 # Add project root to path so we can import DB config
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request, session, redirect, url_for
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from datetime import datetime, timezone
 
 app = Flask(__name__)
+
+app.secret_key = os.getenv("DASHBOARD_SECRET_KEY", "change-this-secret")
+DASHBOARD_PASSWORD = os.getenv("DASHBOARD_PASSWORD", "changeme")
+
+
+def login_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("authenticated"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    error = None
+    if request.method == "POST":
+        if request.form.get("password") == DASHBOARD_PASSWORD:
+            session["authenticated"] = True
+            return redirect(url_for("index"))
+        error = "Incorrect password"
+    return render_template("login.html", error=error)
+
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
 
 DB_CONFIG = {
     "host":     os.getenv("PGHOST",     "127.0.0.1"),
@@ -54,11 +85,13 @@ def query_one(sql, params=None):
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route("/")
+@login_required
 def index():
     return render_template("index.html")
 
 
 @app.route("/api/summary")
+@login_required
 def api_summary():
     data = query_one("""
         SELECT
@@ -81,6 +114,7 @@ def api_summary():
 
 
 @app.route("/api/severity_breakdown")
+@login_required
 def api_severity_breakdown():
     rows = query("""
         SELECT severity, COUNT(*) AS total
@@ -95,6 +129,7 @@ def api_severity_breakdown():
 
 
 @app.route("/api/attack_chains")
+@login_required
 def api_attack_chains():
     rows = query("""
         SELECT
@@ -111,6 +146,7 @@ def api_attack_chains():
 
 
 @app.route("/api/critical_findings")
+@login_required
 def api_critical_findings():
     rows = query("""
         SELECT check_title, severity, resource_arn, region, service,
@@ -127,6 +163,7 @@ def api_critical_findings():
 
 
 @app.route("/api/cves")
+@login_required
 def api_cves():
     rows = query("""
         SELECT instance_id, cve_id, severity, cvss_score,
@@ -140,6 +177,7 @@ def api_cves():
 
 
 @app.route("/api/iam_risks")
+@login_required
 def api_iam_risks():
     rows = query("""
         SELECT source_name, source_type, target_name, target_type,
@@ -152,6 +190,7 @@ def api_iam_risks():
 
 
 @app.route("/api/instances")
+@login_required
 def api_instances():
     rows = query("""
         SELECT i.instance_id, i.name_tag, i.instance_type, i.instance_state,
@@ -167,6 +206,7 @@ def api_instances():
 
 
 @app.route("/api/services_breakdown")
+@login_required
 def api_services_breakdown():
     rows = query("""
         SELECT service, COUNT(*) AS failures
@@ -180,6 +220,7 @@ def api_services_breakdown():
 
 
 @app.route("/api/report")
+@login_required
 def api_report():
     import glob
     project_root = Path(__file__).parent.parent
