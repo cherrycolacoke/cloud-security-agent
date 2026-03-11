@@ -250,7 +250,7 @@ def print_summary():
 
 # ─────────────────────────────────────────────────────────────────────────────
 def load_sample():
-    path = Path(__file__).parent / "pmapper_sample.json"
+    path = Path(__file__).parent.parent / "sample_data" / "pmapper_sample.json"
     with open(path) as f:
         return json.load(f)
 

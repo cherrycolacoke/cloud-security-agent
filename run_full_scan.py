@@ -96,9 +96,9 @@ def scan_account(account: dict, args: argparse.Namespace,
     # ── 1. Prowler ─────────────────────────────────────────────────────────────
     if "prowler" not in args.skip:
         if args.sample:
-            cmd = [PYTHON, "prowler_ingest.py", "--file", "sample_findings.json", "--no-alert"]
+            cmd = [PYTHON, "ingestion/prowler_ingest.py", "--file", "sample_data/sample_findings.json", "--no-alert"]
         else:
-            cmd = [PYTHON, "prowler_ingest.py", "--run", "--no-alert"]
+            cmd = [PYTHON, "ingestion/prowler_ingest.py", "--run", "--no-alert"]
         ok = run(f"Prowler [{account_name}]", cmd, log_file, account_env)
         steps_run += 1
         if not ok:
@@ -107,9 +107,9 @@ def scan_account(account: dict, args: argparse.Namespace,
     # ── 2. Trivy ───────────────────────────────────────────────────────────────
     if "trivy" not in args.skip:
         if args.sample:
-            cmd = [PYTHON, "trivy_ingest.py", "--file", "i-0abc123def456.json", "--no-alert"]
+            cmd = [PYTHON, "ingestion/trivy_ingest.py", "--file", "sample_data/i-0abc123def456.json", "--no-alert"]
         else:
-            cmd = [PYTHON, "trivy_ingest.py", "--scan-all", "--no-alert"]
+            cmd = [PYTHON, "ingestion/trivy_ingest.py", "--scan-all", "--no-alert"]
         ok = run(f"Trivy [{account_name}]", cmd, log_file, account_env)
         steps_run += 1
         if not ok:
@@ -128,7 +128,7 @@ def scan_account(account: dict, args: argparse.Namespace,
 
     # ── 3. Steampipe ───────────────────────────────────────────────────────────
     if "steampipe" not in args.skip:
-        cmd = [PYTHON, "steampipe_ingest.py", "--sample" if args.sample else "--sync"]
+        cmd = [PYTHON, "ingestion/steampipe_ingest.py", "--sample" if args.sample else "--sync"]
         ok  = run(f"Steampipe [{account_name}]", cmd, log_file, account_env)
         steps_run += 1
         if not ok:
@@ -136,7 +136,7 @@ def scan_account(account: dict, args: argparse.Namespace,
 
     # ── 4. PMapper ─────────────────────────────────────────────────────────────
     if "pmapper" not in args.skip:
-        cmd = [PYTHON, "pmapper_ingest.py", "--sample" if args.sample else "--run"]
+        cmd = [PYTHON, "ingestion/pmapper_ingest.py", "--sample" if args.sample else "--run"]
         ok  = run(f"PMapper [{account_name}]", cmd, log_file, account_env)
         steps_run += 1
         if not ok:

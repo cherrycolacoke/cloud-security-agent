@@ -13,10 +13,10 @@ services:
       POSTGRES_DB:       ${PGDATABASE:-cloud_security}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/01_init.sql
-      - ./steampipe_schema.sql:/docker-entrypoint-initdb.d/02_steampipe.sql
-      - ./trivy_schema.sql:/docker-entrypoint-initdb.d/03_trivy.sql
-      - ./pmapper_schema.sql:/docker-entrypoint-initdb.d/04_pmapper.sql
+      - ./schema/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./schema/steampipe_schema.sql:/docker-entrypoint-initdb.d/02_steampipe.sql
+      - ./schema/trivy_schema.sql:/docker-entrypoint-initdb.d/03_trivy.sql
+      - ./schema/pmapper_schema.sql:/docker-entrypoint-initdb.d/04_pmapper.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${PGUSER:-secadmin} -d ${PGDATABASE:-cloud_security}"]
       interval: 10s

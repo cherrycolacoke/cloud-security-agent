@@ -248,7 +248,7 @@ def sync_live(tables):
 
 def sync_sample():
     print(f"[{ts()}] Loading sample data...")
-    path = Path(__file__).parent / "steampipe_sample.json"
+    path = Path(__file__).parent.parent / "sample_data" / "steampipe_sample.json"
     with open(path) as f:
         data = json.load(f)
     sec_conn = psycopg2.connect(**DB_CONFIG)
