@@ -179,6 +179,20 @@ def api_services_breakdown():
     return jsonify(rows)
 
 
+@app.route("/api/report")
+def api_report():
+    import glob
+    project_root = Path(__file__).parent.parent
+    # Find the most recent report file
+    reports = sorted(project_root.glob("security_report*.md"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not reports:
+        return jsonify({"content": None, "filename": None, "generated": None})
+    report = reports[0]
+    content = report.read_text()
+    generated = datetime.fromtimestamp(report.stat().st_mtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return jsonify({"content": content, "filename": report.name, "generated": generated})
+
+
 if __name__ == "__main__":
     print("\n" + "="*50)
     print("  AI Cloud Security Agent — Dashboard")

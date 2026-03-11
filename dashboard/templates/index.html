@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cloud Security Agent</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg:       #080b10;
@@ -21,7 +21,7 @@
     --blue:     #58a6ff;
     --purple:   #bc8cff;
     --mono:     'Space Mono', monospace;
-    --sans:     'Syne', sans-serif;
+    --sans:     'Inter', sans-serif;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -498,6 +498,73 @@
     color: var(--muted);
   }
 
+  /* ── Markdown report styles ── */
+  .md-body { max-width: 720px; line-height: 1.8; margin: 0 auto; }
+  .md-h1 {
+    font-size: 22px; font-weight: 800; color: var(--bright);
+    margin: 36px 0 14px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--sans);
+  }
+  .md-h2 {
+    font-size: 16px; font-weight: 700; color: var(--bright);
+    margin: 28px 0 10px;
+    padding: 10px 14px;
+    background: rgba(88,166,255,0.06);
+    border-left: 3px solid var(--blue);
+    border-radius: 0 4px 4px 0;
+  }
+  .md-h3 {
+    font-size: 11px; font-weight: 700; color: var(--blue);
+    margin: 22px 0 8px; text-transform: uppercase;
+    letter-spacing: 0.12em; font-family: var(--mono);
+  }
+  .md-h4 {
+    font-size: 13px; font-weight: 500; color: var(--orange);
+    margin: 16px 0 6px; font-family: var(--sans);
+  }
+  .md-p  { margin: 6px 0 10px; color: var(--text); font-size: 14px; line-height: 1.75; }
+  .md-gap { height: 6px; }
+  .md-hr  { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .md-ul, .md-ol { margin: 8px 0 12px 0; padding: 0; list-style: none; }
+  .md-li {
+    position: relative; padding: 5px 0 5px 22px;
+    font-size: 14px; color: var(--text); line-height: 1.7;
+    font-weight: 400;
+  }
+  .md-ul .md-li::before {
+    content: '▸'; position: absolute; left: 4px;
+    color: var(--blue); font-size: 10px; top: 7px;
+  }
+  .md-num {
+    display: inline-block; min-width: 22px;
+    color: var(--blue); font-family: var(--mono);
+    font-size: 11px; margin-right: 4px;
+    position: absolute; left: 0;
+  }
+  .md-code {
+    background: rgba(63,185,80,0.1); color: var(--green);
+    font-family: var(--mono); font-size: 11px;
+    padding: 2px 7px; border-radius: 3px;
+    border: 1px solid rgba(63,185,80,0.2);
+  }
+  .md-pre {
+    background: #060910; border: 1px solid var(--border);
+    border-radius: 6px; padding: 18px 20px; margin: 12px 0;
+    overflow-x: auto; position: relative;
+  }
+  .md-pre::before {
+    content: 'bash'; position: absolute; top: 8px; right: 12px;
+    font-family: var(--mono); font-size: 9px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .md-pre code {
+    font-family: var(--mono); font-size: 12px;
+    color: #7ee787; line-height: 1.7;
+    white-space: pre; display: block;
+  }
+  strong { color: var(--bright); font-weight: 700; }
+
   /* ── Fade in animation ── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(12px); }
@@ -529,6 +596,7 @@
   <button onclick="showTab('cves')">CVEs</button>
   <button onclick="showTab('iam')">IAM Risks</button>
   <button onclick="showTab('inventory')">Inventory</button>
+  <button onclick="showTab('report')">LLM Report</button>
 </nav>
 
 <main>
@@ -653,6 +721,17 @@
     </div>
   </div>
 
+  <!-- ── LLM REPORT ────────────────────────────────────────────────────── -->
+  <div id="tab-report" class="tab-panel">
+    <div class="section-header">
+      <div class="section-title">AI Security Report</div>
+      <span class="count-badge" id="report-meta">—</span>
+    </div>
+    <div id="report-container" class="table-wrap" style="padding: 48px 64px;">
+      <div class="loading">Loading</div>
+    </div>
+  </div>
+
   <!-- ── INVENTORY ─────────────────────────────────────────────────────── -->
   <div id="tab-inventory" class="tab-panel">
     <div class="section-header">
@@ -701,6 +780,7 @@ function loadTab(name) {
     cves:      loadCVEs,
     iam:       loadIAM,
     inventory: loadInventory,
+    report:    loadReport,
   };
   if (loaders[name]) loaders[name]();
 }
@@ -886,6 +966,120 @@ async function loadInventory() {
       <td>${r.allows_ssh_public ? '<span class="badge badge-high">YES</span>' : '<span class="badge badge-low">no</span>'}</td>
     </tr>
   `).join('') : '<tr><td colspan="7" class="empty">No instances found — run Steampipe first</td></tr>';
+}
+
+// ── LLM Report ────────────────────────────────────────────────────────────
+async function loadReport() {
+  const data = await fetchJSON('/api/report');
+  const container = document.getElementById('report-container');
+  const meta = document.getElementById('report-meta');
+
+  if (!data.content) {
+    container.innerHTML = `
+      <div class="empty">
+        No report found yet.<br><br>
+        <span class="mono" style="color:var(--blue)">python3 run_full_scan.py --analyse</span><br><br>
+        Run a full scan to generate the AI security report.
+      </div>`;
+    meta.textContent = 'no report';
+    return;
+  }
+
+  meta.textContent = data.generated;
+
+  // Markdown → HTML renderer
+  function renderMarkdown(md) {
+    // 1. Extract and protect code blocks first
+    const codeBlocks = [];
+    md = md.replace(/```[\w]*\n?([\s\S]*?)```/g, (_, code) => {
+      codeBlocks.push(code.trim());
+      return `\x00CODE${codeBlocks.length - 1}\x00`;
+    });
+
+    // 2. Inline code
+    const inlineCodes = [];
+    md = md.replace(/`([^`]+)`/g, (_, code) => {
+      inlineCodes.push(code);
+      return `\x00INLINE${inlineCodes.length - 1}\x00`;
+    });
+
+    // 3. Block elements line by line
+    const lines = md.split('\n');
+    const out = [];
+    let i = 0;
+
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // Headings
+      if (/^#### (.+)/.test(line))      { out.push(`<h4 class="md-h4">${line.replace(/^#### /, '')}</h4>`); i++; continue; }
+      if (/^### (.+)/.test(line))       { out.push(`<h3 class="md-h3">${line.replace(/^### /, '')}</h3>`); i++; continue; }
+      if (/^## (.+)/.test(line))        { out.push(`<h2 class="md-h2">${line.replace(/^## /, '')}</h2>`); i++; continue; }
+      if (/^# (.+)/.test(line))         { out.push(`<h1 class="md-h1">${line.replace(/^# /, '')}</h1>`); i++; continue; }
+
+      // Horizontal rule
+      if (/^[═─]{3,}/.test(line))       { out.push('<hr class="md-hr">'); i++; continue; }
+
+      // Code block placeholder
+      if (/\x00CODE\d+\x00/.test(line)) {
+        const idx = line.match(/\x00CODE(\d+)\x00/)[1];
+        out.push(`<pre class="md-pre"><code>${escHtml(codeBlocks[idx])}</code></pre>`);
+        i++; continue;
+      }
+
+      // Bullet list
+      if (/^[-*•] (.+)/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^[-*•] (.+)/.test(lines[i])) {
+          items.push(`<li class="md-li">${inlineFormat(lines[i].replace(/^[-*•] /, ''))}</li>`);
+          i++;
+        }
+        out.push(`<ul class="md-ul">${items.join('')}</ul>`);
+        continue;
+      }
+
+      // Numbered list
+      if (/^\d+\. (.+)/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^\d+\. (.+)/.test(lines[i])) {
+          const m = lines[i].match(/^(\d+)\. (.+)/);
+          items.push(`<li class="md-li"><span class="md-num">${m[1]}.</span> ${inlineFormat(m[2])}</li>`);
+          i++;
+        }
+        out.push(`<ol class="md-ol">${items.join('')}</ol>`);
+        continue;
+      }
+
+      // Empty line
+      if (line.trim() === '') { out.push('<div class="md-gap"></div>'); i++; continue; }
+
+      // Paragraph
+      out.push(`<p class="md-p">${inlineFormat(line)}</p>`);
+      i++;
+    }
+
+    let html = out.join('\n');
+
+    // Restore inline codes
+    html = html.replace(/\x00INLINE(\d+)\x00/g, (_, idx) =>
+      `<code class="md-code">${escHtml(inlineCodes[idx])}</code>`);
+
+    return html;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function inlineFormat(s) {
+    return s
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\x00INLINE(\d+)\x00/g, (_, idx) =>
+        `<code class="md-code">${escHtml(inlineCodes[parseInt(idx)])}</code>`);
+  }
+
+  container.innerHTML = `<div class="md-body">${renderMarkdown(data.content)}</div>`;
 }
 
 // ── Boot ───────────────────────────────────────────────────────────────────
